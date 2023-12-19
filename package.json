@@ -1,7 +1,6 @@
 {
-  "name": "s-link",
+  "name": "morse-telegraph",
   "type": "module",
-  "private": true,
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
