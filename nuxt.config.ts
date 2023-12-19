@@ -8,9 +8,4 @@ export default defineNuxtConfig({
     transformers: [transformerVariantGroup()],
   },
   ssr: false,
-  vite: {
-    resolve: {
-      mainFields: ['main', 'browser'],
-    },
-  },
 })
