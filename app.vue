@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useMagicKeys } from '@vueuse/core'
-import { useTelegraph } from './composables/useTelegraph'
 
 const { Command, socketStatus, theyMessages, myMessages, send, sendCommand } = useWebSocket()
 const { morseMap, inputCode, word, transcoder, press, up } = useTelegraph(send)
