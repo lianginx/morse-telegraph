@@ -1,14 +1,4 @@
-enum Status {
-  Online = '在线',
-  Error = '错误',
-  Offline = '离线',
-}
-
-enum Command {
-  Backspace = '/backspace',
-  Clear = '/clear',
-  Br = '/br',
-}
+import { SocketStatus, TelegraphCommand } from '~/types'
 
 /**
  * 创建 WebSocket 连接
@@ -21,51 +11,77 @@ export function useWebSocket(
   hostname = window.location.hostname,
   port = 8080,
 ) {
-  const theyMessages = ref<string[]>([])
-
+  const uuid = ref<string>()
+  const allMessage = ref<string[]>([])
   const myMessages = ref<string[]>([])
-
-  const socketStatus = ref<Status>(Status.Offline)
-
+  const socketStatus = ref<SocketStatus>(SocketStatus.Offline)
   const url = `${protocol}://${hostname}:${port}`
-
   const socket = new WebSocket(url)
 
   socket.onopen = () => {
-    socketStatus.value = Status.Online
+    socketStatus.value = SocketStatus.Online
   }
 
   socket.onclose = () => {
-    socketStatus.value = Status.Offline
+    socketStatus.value = SocketStatus.Offline
   }
 
   socket.onerror = (e) => {
     console.error('WebSocket Error:', e)
-    socketStatus.value = Status.Error
+    socketStatus.value = SocketStatus.Error
   }
 
   socket.onmessage = (e) => {
-    const msg = e.data as string
-    if (msg.startsWith('/'))
-      handleCommand(theyMessages, msg as Command)
-    else
-      theyMessages.value.push(msg)
+    const { code, msg, data } = JSON.parse(e.data)
+
+    if (code !== 0) {
+      console.error('WebSocket Error:', msg)
+      return
+    }
+
+    switch (data.type) {
+      case 'message':
+        allMessage.value.push(data.message)
+        break
+      case 'command':
+        handleCommand(data.command)
+        break
+      case 'connection':
+        uuid.value = data.uuid
+        break
+    }
   }
 
-  onUnmounted(() => {
-    // 关闭连接
-    socket.close()
-  })
+  function send(type: 'message' | 'command', msg: string | TelegraphCommand) {
+    if (!msg)
+      return
+    socket.send(JSON.stringify({
+      type,
+      uuid: uuid.value,
+      message: type === 'message' ? msg : undefined,
+      command: type === 'command' ? msg : undefined,
+    }))
+  }
 
-  function handleCommand(messages: Ref<string[]>, command: Command) {
+  function sendMessage(msg: string) {
+    send('message', msg)
+    myMessages.value.push(msg)
+  }
+
+  function sendCommand(command: TelegraphCommand) {
+    send('command', command)
+    handleCommand(command)
+  }
+
+  function handleCommand(command: TelegraphCommand) {
     switch (command) {
-      case Command.Backspace:
-        messages.value.pop()
+      case TelegraphCommand.Backspace:
+        myMessages.value.pop()
         break
-      case Command.Clear:
+      case TelegraphCommand.Clear:
         messages.value = []
         break
-      case Command.Br:
+      case TelegraphCommand.Br:
         messages.value.push('\n')
         break
       default:
@@ -73,22 +89,11 @@ export function useWebSocket(
     }
   }
 
-  function send(msg: string) {
-    socket.send(msg)
-    myMessages.value.push(msg)
-  }
-
-  function sendCommand(command: Command) {
-    socket.send(command)
-    handleCommand(myMessages, command)
-  }
   return {
-    /** 枚举 - WebSocket 连接状态 */
-    Status,
-    /** 枚举 - 指令 */
-    Command,
+    /** WebSocket 连接唯一标识 */
+    uuid,
     /** 接收的消息列表 */
-    theyMessages,
+    allMessage,
     /** 发出的消息列表 */
     myMessages,
     /** WebSocket 协议 */
@@ -107,7 +112,7 @@ export function useWebSocket(
      * 发送消息
      * @param msg 文本消息
      */
-    send,
+    sendMessage,
     /**
      * 发送指令
      * @param command 指令

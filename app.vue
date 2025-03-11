@@ -1,71 +1,42 @@
 <script lang="ts" setup>
 import { useMagicKeys } from '@vueuse/core'
+import { TelegraphCommand } from '~/types'
 
-const { Command, socketStatus, theyMessages, myMessages, send, sendCommand } = useWebSocket()
-const { morseMap, inputCode, word, transcoder, press, up } = useTelegraph(send)
+const { socketStatus, uuid, theyMessages, myMessages, sendMessage, sendCommand } = useWebSocket()
+const { morseMap, inputCode, word, transcoder, press, up } = useTelegraph(sendMessage)
 const { enter, backspace } = useMagicKeys()
 
-watch(enter, (keyDown) => {
-  keyDown ? press() : up()
-})
-
-watch(backspace, (keyDown) => {
-  keyDown && sendCommand(Command.Backspace)
-})
+watch(enter, keyDown => keyDown ? press() : up())
+watch(backspace, keyDown => keyDown && sendCommand(TelegraphCommand.Backspace))
 </script>
 
 <template>
-  <div class="h-screen overflow-hidden p10 flex flex-col justify-self-center space-y-4">
-    <div class="flex justify-center items-center space-x-2xl">
-      <div class="flex flex-col space-y-4 items-center justify-center">
-        <div class="text-green-5">
-          电台{{ socketStatus }}
+  <div class="h-screen flex flex-col justify-self-center overflow-hidden p10 space-y-4">
+    <div class="flex items-center justify-center space-x-2xl">
+      <div class="flex flex-col space-y-4">
+        <TelegraphStatus :status="socketStatus" prefix="电台" :uuid="uuid" />
+        <div class="mx10 rounded-lg bg-gray-1 p5">
+          <div class="font-bold">
+            They:
+          </div>
+          <span v-for="msg in theyMessages" :key="msg" class="leading-8 font-serif">{{ `${msg} ` }}</span>
         </div>
+        <div class="mx10 rounded-lg bg-gray-1 p5">
+          <div class="font-bold leading-relaxed">
+            Me:
+          </div>
+          <span v-for="msg in myMessages" :key="msg" class="leading-8 font-serif">{{ `${msg} ` }}</span>
+        </div>
+        <!-- <TelegraphCodeMappingTable :morse-map="morseMap" :transcoder="transcoder" /> -->
         <div>{{ word }}</div>
-        <input
-          v-model="inputCode"
-          class="text-2xl"
-          type="text"
-          disabled
-        >
-        <button
-          class="w-20 h-20 rounded-full bg-red border-none text-white hover:bg-red-5 active:bg-red-6"
-          @mousedown="press"
-          @mouseup="up"
-        >
-          Push
+        <input v-model="inputCode" class="text-2xl" type="text" disabled>
+        <button class="h-30 w-30 select-none rounded-full border-none" @touchstart="press" @touchend="up">
+          PUSH
         </button>
       </div>
-      <div class="grid grid-cols-3 gap-4">
-        <div
-          v-for="morseCode in morseMap"
-          :key="morseCode[0]"
-          class="space-x-2"
-        >
-          <code class="font-bold bg-gray-1">{{ transcoder(morseCode[0]) }}</code>
-          <span>{{ morseCode[1] }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="bg-gray-1 mx10 p5 rounded-lg">
-      <div class="font-bold leading-relaxed">
-        Me:
-      </div>
-      <span
-        v-for="msg in myMessages"
-        :key="msg"
-        class="leading-8 font-serif"
-      >{{ `${msg} ` }}</span>
-    </div>
-    <div class="mx10 bg-gray-1 p5 rounded-lg">
-      <div class="font-bold">
-        They:
-      </div>
-      <span
-        v-for="msg in theyMessages"
-        :key="msg"
-        class="leading-8 font-serif"
-      >{{ `${msg} ` }}</span>
     </div>
   </div>
 </template>
+
+<style scoped>
+</style>
